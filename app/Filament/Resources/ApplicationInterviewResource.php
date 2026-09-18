@@ -29,7 +29,7 @@ class ApplicationInterviewResource extends Resource
         return $form->schema([
             Forms\Components\Section::make('Registro de entrevista')->schema([
                 Forms\Components\Select::make('application_id')->label('Candidatura')->relationship('application', 'first_name')
-                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->full_name)->searchable()->preload()->required()->unique(ignoreRecord: true),
+                    ->getOptionLabelFromRecordUsing(fn ($record) => $record->full_name)->searchable()->preload()->required()->default(fn () => request()->integer('application'))->unique(ignoreRecord: true),
                 Forms\Components\DatePicker::make('interviewed_at')->label('Fecha')->required(),
                 Forms\Components\Select::make('evaluator_id')->label('Persona evaluadora')->relationship('evaluator', 'name')->searchable()->preload()->required(),
                 Forms\Components\Select::make('status')->label('Estado')->options([
@@ -51,7 +51,7 @@ class ApplicationInterviewResource extends Resource
                         Forms\Components\Select::make('criterion')->label('Criterio')->options(ApplicationInterview::criteriaLabels())->required()->disableOptionsWhenSelectedInSiblingRepeaterItems(),
                         Forms\Components\TextInput::make('score')->label('Puntuación (0-10)')->numeric()->minValue(0)->maxValue(10)->required(),
                         Forms\Components\Textarea::make('comment')->label('Comentario')->required(),
-                    ])->columns(3)->minItems(count(ApplicationInterview::criteriaLabels()))->maxItems(count(ApplicationInterview::criteriaLabels()))->required(),
+                    ])->columns(3)->default(array_map(fn (string $criterion) => ['criterion' => $criterion, 'score' => 0, 'comment' => ''], array_keys(ApplicationInterview::criteriaLabels())))->minItems(count(ApplicationInterview::criteriaLabels()))->maxItems(count(ApplicationInterview::criteriaLabels()))->required(),
             ]),
         ]);
     }
