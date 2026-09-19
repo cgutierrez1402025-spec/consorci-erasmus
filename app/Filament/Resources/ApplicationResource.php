@@ -38,6 +38,11 @@ class ApplicationResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Convocatoria y Centro Educativo')
                     ->schema([
+                        Forms\Components\Select::make('user_id')
+                            ->label('Usuario solicitante')
+                            ->relationship('user', 'name')
+                            ->searchable()
+                            ->preload(),
                         Forms\Components\Select::make('mobility_call_id')
                             ->label('Convocatoria')
                             ->relationship('call', 'title')

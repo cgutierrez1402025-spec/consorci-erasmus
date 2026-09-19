@@ -31,6 +31,7 @@ class MobilityCall extends Model
         'erasmus_project_id',
         'title',
         'mobility_type',
+        'program_type',
         'academic_year',
         'application_start_date',
         'application_end_date',

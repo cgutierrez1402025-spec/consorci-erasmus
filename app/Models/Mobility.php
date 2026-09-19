@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\MobilityStatus;
+use App\Services\MobilityChecklistService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -13,15 +14,22 @@ class Mobility extends Model
 {
     use HasFactory;
 
+    protected static function booted(): void
+    {
+        static::created(fn (self $mobility) => app(MobilityChecklistService::class)->synchronize($mobility));
+    }
+
     protected $fillable = [
         'erasmus_project_id',
         'mobility_call_id',
         'application_id',
+        'user_id',
         'host_partner_id',
         'educational_center_id',
         'participant_name',
         'participant_email',
         'participant_type',
+        'mobility_kind',
         'participant_role',
         'is_minor',
         'training_branch',
@@ -31,7 +39,9 @@ class Mobility extends Model
         'destination_country',
         'destination_city',
         'start_date',
+        'actual_start_date',
         'end_date',
+        'actual_end_date',
         'duration_days',
         'travel_type',
         'fewer_opportunities',
@@ -40,6 +50,9 @@ class Mobility extends Model
         'travel_amount',
         'inclusion_amount',
         'total_grant_amount',
+        'pre_financing_paid',
+        'pre_financing_paid_at',
+        'grant_agreement_signed_at',
         'status',
         'learning_agreement_signed',
         'grant_agreement_signed',
@@ -52,7 +65,9 @@ class Mobility extends Model
 
     protected $casts = [
         'start_date' => 'date',
+        'actual_start_date' => 'date',
         'end_date' => 'date',
+        'actual_end_date' => 'date',
         'duration_days' => 'integer',
         'fewer_opportunities' => 'boolean',
         'is_minor' => 'boolean',
@@ -65,6 +80,9 @@ class Mobility extends Model
         'travel_amount' => 'decimal:2',
         'inclusion_amount' => 'decimal:2',
         'total_grant_amount' => 'decimal:2',
+        'pre_financing_paid' => 'boolean',
+        'pre_financing_paid_at' => 'date',
+        'grant_agreement_signed_at' => 'date',
         'status' => MobilityStatus::class,
     ];
 
@@ -81,6 +99,11 @@ class Mobility extends Model
     public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 
     public function hostPartner(): BelongsTo
@@ -111,5 +134,15 @@ class Mobility extends Model
     public function withdrawal(): HasOne
     {
         return $this->hasOne(MobilityWithdrawal::class);
+    }
+
+    public function documents(): HasMany
+    {
+        return $this->hasMany(MobilityDocument::class);
+    }
+
+    public function getChecklistCompletionAttribute(): int
+    {
+        return app(MobilityChecklistService::class)->completionPercentage($this);
     }
 }

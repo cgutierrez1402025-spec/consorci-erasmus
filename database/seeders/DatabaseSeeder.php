@@ -22,6 +22,8 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
+        $this->call(MobilityDocumentTemplateSeeder::class);
+
         // 1. Centros Educativos del Consorcio (FP Comunitat Valenciana)
         $centers = [
             [

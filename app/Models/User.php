@@ -2,36 +2,36 @@
 
 namespace App\Models;
 
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
-use Filament\Models\Contracts\FilamentUser;
-use Filament\Panel;
 
 class User extends Authenticatable implements FilamentUser
 {
     use HasFactory, Notifiable;
 
     protected $fillable = [
-        "name",
-        "email",
-        "password",
-        "role",
-        "phone",
-        "educational_center_id",
+        'name',
+        'email',
+        'password',
+        'role',
+        'phone',
+        'educational_center_id',
     ];
 
     protected $hidden = [
-        "password",
-        "remember_token",
+        'password',
+        'remember_token',
     ];
 
     protected function casts(): array
     {
         return [
-            "email_verified_at" => "datetime",
-            "password" => "hashed",
+            'email_verified_at' => 'datetime',
+            'password' => 'hashed',
         ];
     }
 
@@ -47,11 +47,21 @@ class User extends Authenticatable implements FilamentUser
 
     public function isSuperAdmin(): bool
     {
-        return $this->role === "superadmin";
+        return $this->role === 'superadmin';
     }
 
     public function isConsortiumCoordinator(): bool
     {
-        return in_array($this->role, ["superadmin", "consortium_coordinator"]);
+        return in_array($this->role, ['superadmin', 'consortium_coordinator']);
+    }
+
+    public function hasAnyInternalRole(array $roles): bool
+    {
+        return in_array($this->role, $roles, true);
+    }
+
+    public function canValidateMobilityDocuments(): bool
+    {
+        return $this->hasAnyInternalRole(['superadmin', 'admin_erasmus', 'consortium_coordinator', 'gestor_consorcio_stepv', 'tutor_fct']);
     }
 }

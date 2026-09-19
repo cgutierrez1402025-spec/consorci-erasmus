@@ -7,7 +7,9 @@ use App\Enums\PaymentStatus;
 use App\Filament\Resources\MobilityResource\Pages;
 use App\Models\Mobility;
 use App\Models\MobilityBond;
+use App\Models\MobilityDocument;
 use App\Models\MobilityPayment;
+use App\Services\ErasmusGrantCalculatorService;
 use App\Services\GrantCalculationService;
 use Filament\Forms;
 use Filament\Forms\Form;
@@ -38,6 +40,11 @@ class MobilityResource extends Resource
             ->schema([
                 Forms\Components\Section::make('Participante y Proyecto')
                     ->schema([
+                        Forms\Components\Select::make('user_id')
+                            ->label('Usuario participante')
+                            ->relationship('user', 'name')
+                            ->searchable()
+                            ->preload(),
                         Forms\Components\Select::make('erasmus_project_id')
                             ->label('Proyecto SEPIE')
                             ->relationship('project', 'title')
@@ -188,6 +195,29 @@ class MobilityResource extends Resource
                             ->columnSpanFull(),
                     ])->columns(2),
 
+                Forms\Components\Section::make('Checklist documental de movilidad')
+                    ->description('Documentos organizados por fase. Los archivos se guardan de forma privada y solo son accesibles a usuarios autorizados.')
+                    ->schema([
+                        Forms\Components\Repeater::make('documents')
+                            ->relationship()
+                            ->schema([
+                                Forms\Components\TextInput::make('phase')->label('Fase')->readOnly(),
+                                Forms\Components\TextInput::make('label')->label('Documento')->readOnly()->columnSpan(2),
+                                Forms\Components\FileUpload::make('storage_path')->label('Archivo')->disk('private')->directory('documentos')->visibility('private'),
+                                Forms\Components\Select::make('validation_status')->label('Estado')->options([
+                                    MobilityDocument::STATUS_PENDING_DELIVERY => 'Pendiente de entrega',
+                                    MobilityDocument::STATUS_IN_REVIEW => 'En revisión',
+                                    MobilityDocument::STATUS_VALIDATED => 'Validado',
+                                    MobilityDocument::STATUS_REJECTED => 'Rechazado',
+                                    MobilityDocument::STATUS_NOT_APPLICABLE => 'No aplicable',
+                                ])->required(),
+                                Forms\Components\Textarea::make('coordinator_observations')->label('Observaciones')->columnSpanFull(),
+                            ])
+                            ->columns(4)
+                            ->addable(false)
+                            ->deletable(false),
+                    ]),
+
                 Forms\Components\Section::make('Datos bancarios y fianza')
                     ->schema([
                         Forms\Components\TextInput::make('iban')->label('IBAN')->password()->revealable()->maxLength(34),
@@ -272,6 +302,10 @@ class MobilityResource extends Resource
                     ->label('Beca Total')
                     ->money('EUR')
                     ->sortable(),
+                Tables\Columns\TextColumn::make('checklist_completion')
+                    ->label('Checklist')
+                    ->suffix('%')
+                    ->alignCenter(),
                 Tables\Columns\BadgeColumn::make('status')
                     ->label('Estado')
                     ->formatStateUsing(fn ($state) => $state instanceof MobilityStatus ? $state->getLabel() : $state)
@@ -290,6 +324,46 @@ class MobilityResource extends Resource
                     ->label('Estado'),
             ])
             ->actions([
+                Tables\Actions\Action::make('calculateErasmusFunding')
+                    ->label('Calcular financiación Erasmus+')
+                    ->icon('heroicon-o-calculator')
+                    ->color('info')
+                    ->form([
+                        Forms\Components\Select::make('grant_type')->label('Régimen de financiación')->options([
+                            'long_term_student' => 'Estudiante de larga duración',
+                            'short_term_student' => 'Estudiante de corta duración / BIP',
+                            'staff' => 'Personal / profesorado',
+                        ])->required()->default(fn (Mobility $record) => $record->participant_type === 'staff' ? 'staff' : 'long_term_student')->live(),
+                        Forms\Components\TextInput::make('monthly_base_amount')->label('Importe base mensual')->numeric()->prefix('€')->visible(fn (Get $get) => $get('grant_type') === 'long_term_student')->required(fn (Get $get) => $get('grant_type') === 'long_term_student'),
+                        Forms\Components\TextInput::make('daily_country_rate')->label('Tarifa diaria de país')->numeric()->prefix('€')->visible(fn (Get $get) => $get('grant_type') === 'staff')->required(fn (Get $get) => $get('grant_type') === 'staff'),
+                        Forms\Components\Toggle::make('is_traineeship')->label('Prácticas (complemento de 150 €)')->visible(fn (Get $get) => $get('grant_type') === 'long_term_student'),
+                        Forms\Components\Toggle::make('has_fewer_opportunities')->label('Menos oportunidades')->default(fn (Mobility $record) => $record->fewer_opportunities),
+                        Forms\Components\TextInput::make('travel_support_amount')->label('Ayuda de viaje')->numeric()->prefix('€')->default(fn (Mobility $record) => $record->travel_amount ?? 0)->required(),
+                    ])
+                    ->action(function (Mobility $record, array $data): void {
+                        $calculator = new ErasmusGrantCalculatorService;
+                        $startDate = $record->start_date->copy();
+                        $endDate = $record->end_date->copy();
+                        $result = match ($data['grant_type']) {
+                            'long_term_student' => $calculator->calculateLongTermStudentGrant($startDate, $endDate, (float) $data['monthly_base_amount'], (bool) ($data['is_traineeship'] ?? false), (bool) $data['has_fewer_opportunities'], (float) $data['travel_support_amount']),
+                            'short_term_student' => $calculator->calculateShortTermStudentGrant($startDate, $endDate, (bool) $data['has_fewer_opportunities'], (float) $data['travel_support_amount']),
+                            default => $calculator->calculateStaffGrant($startDate, $endDate, (float) $data['daily_country_rate'], (float) $data['travel_support_amount']),
+                        };
+
+                        $days = $result['duration']['total_days'] ?? $result['total_days'];
+                        $dailyRate = $result['daily_rate'] ?? $result['daily_rate_1_14'] ?? ((float) $result['individual_support'] / $days);
+                        $record->update([
+                            'duration_days' => $days,
+                            'daily_grant_rate' => $dailyRate,
+                            'individual_support_amount' => $result['individual_support'],
+                            'travel_amount' => $result['travel_support'],
+                            'inclusion_amount' => $result['fewer_opp_topup'] ?? 0,
+                            'total_grant_amount' => $result['total_grant'],
+                            'fewer_opportunities' => (bool) $data['has_fewer_opportunities'],
+                        ]);
+
+                        Notification::make()->title('Financiación recalculada')->body("Importe total: {$result['total_grant']} €.")->success()->send();
+                    }),
                 Tables\Actions\Action::make('generatePayments')
                     ->label('Generar Pagos 80% / 20%')
                     ->icon('heroicon-o-banknotes')

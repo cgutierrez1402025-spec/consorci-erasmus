@@ -54,6 +54,15 @@ class MobilityCallResource extends Resource
                                 MobilityType::StaffTraining->value => MobilityType::StaffTraining->getLabel(),
                             ])
                             ->required(),
+                        Forms\Components\Select::make('program_type')
+                            ->label('Programa de movilidad')
+                            ->options([
+                                'GS_ECHE' => 'Grado Superior - ECHE propia',
+                                'GM_STEPV' => 'Grado Medio - Consorcio STEPV',
+                                'STAFF' => 'Profesorado / personal',
+                            ])
+                            ->default('GM_STEPV')
+                            ->required(),
                         Forms\Components\TextInput::make('academic_year')
                             ->label('Curso Académico')
                             ->default('2024-2025')

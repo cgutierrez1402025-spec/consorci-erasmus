@@ -96,6 +96,11 @@ class Application extends Model
         return $this->belongsTo(EducationalCenter::class);
     }
 
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
     public function mobility(): HasOne
     {
         return $this->hasOne(Mobility::class);
