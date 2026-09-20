@@ -12,26 +12,29 @@ class HostPartner extends Model
     use HasFactory;
 
     protected $fillable = [
-        "name",
-        "vat_number",
-        "country_code",
-        "country_group",
-        "city",
-        "address",
-        "contact_person",
-        "contact_email",
-        "contact_phone",
-        "website",
-        "sector",
-        "working_languages",
-        "is_active",
-        "notes",
+        'name',
+        'vat_number',
+        'country_code',
+        'country_group',
+        'city',
+        'address',
+        'contact_person',
+        'contact_email',
+        'contact_phone',
+        'website',
+        'sector',
+        'company_size',
+        'offers_allowance',
+        'working_languages',
+        'is_active',
+        'notes',
     ];
 
     protected $casts = [
-        "country_group" => CountryGroup::class,
-        "working_languages" => "array",
-        "is_active" => "boolean",
+        'country_group' => CountryGroup::class,
+        'working_languages' => 'array',
+        'is_active' => 'boolean',
+        'offers_allowance' => 'boolean',
     ];
 
     public function mobilities(): HasMany
