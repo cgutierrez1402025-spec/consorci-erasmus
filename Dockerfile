@@ -12,7 +12,7 @@ RUN composer install --no-dev --no-scripts --ignore-platform-reqs --prefer-dist 
 COPY . .
 RUN composer dump-autoload --optimize --no-scripts
 
-FROM php:8.3-cli-alpine
+FROM php:8.4-cli-alpine
 RUN apk add --no-cache icu-dev libzip-dev oniguruma-dev sqlite-dev postgresql-dev \
     && docker-php-ext-install intl zip pdo_sqlite pdo_pgsql mbstring bcmath opcache
 WORKDIR /var/www
