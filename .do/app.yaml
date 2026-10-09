@@ -1,0 +1,36 @@
+name: consorci-erasmus
+region: fra
+services:
+  - name: web
+    dockerfile_path: Dockerfile
+    github:
+      repo: cgutierrez1402025-spec/consorci-erasmus
+      branch: main
+      deploy_on_push: true
+    http_port: 8080
+    instance_count: 1
+    instance_size_slug: apps-s-1vcpu-0.5gb
+    health_check:
+      http_path: /admin/login
+    envs:
+      - key: APP_NAME
+        value: Consorci Erasmus
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        type: SECRET
+        value: REEMPLAZAR_CON_php_artisan_key_generate_--show
+      - key: APP_URL
+        value: ${APP_URL}
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_URL
+        value: ${db.DATABASE_URL}
+      - key: SEED_DEMO
+        value: "true"
+databases:
+  - name: db
+    engine: PG
+    production: false
