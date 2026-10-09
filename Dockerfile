@@ -13,8 +13,8 @@ COPY . .
 RUN composer dump-autoload --optimize --no-scripts
 
 FROM php:8.3-cli-alpine
-RUN apk add --no-cache icu-dev libzip-dev oniguruma-dev sqlite-dev \
-    && docker-php-ext-install intl zip pdo_sqlite mbstring bcmath opcache
+RUN apk add --no-cache icu-dev libzip-dev oniguruma-dev sqlite-dev postgresql-dev \
+    && docker-php-ext-install intl zip pdo_sqlite pdo_pgsql mbstring bcmath opcache
 WORKDIR /var/www
 COPY --from=vendor /app .
 COPY --from=assets /app/public/build public/build
