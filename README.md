@@ -41,10 +41,12 @@ Inspirada en los patrones arquitectónicos de `kdp-author-manager-v6`, esta apli
 
 ## Requisitos
 
-- **PHP 8.2+** (probado con PHP 8.4 bajo Laravel Herd).
+- **PHP 8.4+** (probado con PHP 8.4 bajo Laravel Herd).
 - **Composer 2+**.
 - **Node.js 18+** y npm (para Vite).
 - **SQLite** (configurado por defecto) o **MySQL/PostgreSQL**.
+
+> **Nota de despliegue:** el proyecto requiere PHP 8.4 (`composer.json` y `composer.lock`). En Railway, Railpack toma la versión de `composer.json`; también se puede fijar con la variable `RAILPACK_PHP_VERSION=8.4`.
 
 ---
 
